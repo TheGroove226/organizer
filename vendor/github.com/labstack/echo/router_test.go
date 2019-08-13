@@ -741,6 +741,18 @@ func TestRouterPriority(t *testing.T) {
 	assert.Equal(t, "joe/books", c.Param("*"))
 }
 
+func TestRouterIssue1348(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/:lang/", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/:lang/dupa", func(c Context) error {
+		return nil
+	})
+}
+
 // Issue #372
 func TestRouterPriorityNotFound(t *testing.T) {
 	e := New()
@@ -837,6 +849,47 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 	r.Find(http.MethodGet, "/server", c)
 	c.Handler()(c)
 	assert.Equal(t, 3, c.Get("c"))
+}
+
+// Issue #1348
+func TestRouterParamBacktraceNotFound(t *testing.T) {
+	e := New()
+	r := e.router
+
+	// Add
+	r.Add(http.MethodGet, "/:param1", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/:param1/foo", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/:param1/bar", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/:param1/bar/:param2", func(c Context) error {
+		return nil
+	})
+
+	c := e.NewContext(nil, nil).(*context)
+
+	//Find
+	r.Find(http.MethodGet, "/a", c)
+	assert.Equal(t, "a", c.Param("param1"))
+
+	r.Find(http.MethodGet, "/a/foo", c)
+	assert.Equal(t, "a", c.Param("param1"))
+
+	r.Find(http.MethodGet, "/a/bar", c)
+	assert.Equal(t, "a", c.Param("param1"))
+
+	r.Find(http.MethodGet, "/a/bar/b", c)
+	assert.Equal(t, "a", c.Param("param1"))
+	assert.Equal(t, "b", c.Param("param2"))
+
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/a/bbbbb", c)
+	he := c.handler(c).(*HTTPError)
+	assert.Equal(t, http.StatusNotFound, he.Code)
 }
 
 func testRouterAPI(t *testing.T, api []*Route) {

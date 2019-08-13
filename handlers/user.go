@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"organizer/pkg/user"
 
 	"github.com/labstack/echo"
@@ -11,13 +12,13 @@ func PostUser(c echo.Context) error {
 	u := user.NewUser()
 
 	if err := c.Bind(u); err != nil {
-		return err
+		log.Panic(err)
 	}
 
 	uid, err := u.CreateUser()
 
 	if err != nil {
-		return err
+		log.Panic(err)
 	}
 
 	u.ID = uid
